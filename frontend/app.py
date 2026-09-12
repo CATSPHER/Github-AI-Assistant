@@ -1,12 +1,14 @@
 import requests
 import streamlit as st
 
+st.set_page_config(page_title="AI GitHub Repo Assistant", page_icon="🔎")
+
 try:
     API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
 except FileNotFoundError:
     API_BASE = "http://localhost:8000"
 
-st.set_page_config(page_title="AI GitHub Repo Assistant", page_icon="🔎")
+
 st.title("🔎 AI GitHub Repository Assistant")
 
 if "indexed_repo" not in st.session_state:
