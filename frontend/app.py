@@ -1,7 +1,10 @@
 import requests
 import streamlit as st
 
-API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
+try:
+    API_BASE = st.secrets.get("API_BASE", "http://localhost:8000")
+except FileNotFoundError:
+    API_BASE = "http://localhost:8000"
 
 st.set_page_config(page_title="AI GitHub Repo Assistant", page_icon="🔎")
 st.title("🔎 AI GitHub Repository Assistant")
