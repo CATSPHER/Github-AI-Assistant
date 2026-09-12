@@ -6,6 +6,7 @@ from .github_loader import clone_repo, load_files, cleanup
 from .chunking import chunk_files
 from .vectorstore import index_chunks
 from .rag_graph import ask as ask_graph
+from .fix_graph import propose_fix, resume_fix
 
 app = FastAPI(title="AI GitHub Repository Assistant")
 
@@ -18,6 +19,16 @@ class AskRequest(BaseModel):
     repo_url: str
     question: str
     file_path: Optional[str] = None
+
+class ProposeFixRequest(BaseModel):
+    repo_url: str
+    target_file: str  # e.g. "calculator.py" -- the exact path in the repo
+    fix_request: str
+
+
+class ApproveFixRequest(BaseModel):
+    thread_id: str
+    approved: bool
 
 
 @app.post("/ingest")
@@ -63,3 +74,18 @@ def ask(req: AskRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+@app.post("/fix/propose")
+def fix_propose(req: ProposeFixRequest):
+    try:
+        return propose_fix(req.repo_url, req.target_file, req.fix_request)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/fix/approve")
+def fix_approve(req: ApproveFixRequest):
+    try:
+        return resume_fix(req.thread_id, req.approved)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -12,6 +12,7 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM
 CHROMA_DIR = os.getenv("CHROMA_DIR", ".chroma_store")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GITHUB_PAT = os.getenv("GITHUB_PAT", "")
 
 CHUNK_SIZE = 800         # characters per chunk — kept conservative so chunks stay
                           # under common embedding-model limits (e.g. all-MiniLM-L6-v2's

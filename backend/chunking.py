@@ -44,7 +44,7 @@ def _chunk_python_ast(file: RepoFile) -> Optional[list[Chunk]]:
     try:
         tree = ast.parse(file.content)
     except SyntaxError:
-        return None  # not valid Python (or a syntax our parser version can't handle) — fall back
+        return None
 
     lines = file.content.splitlines()
     top_level = [
@@ -52,7 +52,7 @@ def _chunk_python_ast(file: RepoFile) -> Optional[list[Chunk]]:
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
     ]
     if not top_level:
-        return None  # e.g. a config/constants-only file — sliding window handles it fine
+        return None
 
     chunks: list[Chunk] = []
     covered_lines = set()
@@ -67,22 +67,21 @@ def _chunk_python_ast(file: RepoFile) -> Optional[list[Chunk]]:
         snippet = "\n".join(lines[start_line:end_line])
         kind = "class" if isinstance(node, ast.ClassDef) else "function"
         symbol = node.name
+        # Include the start line so two same-named functions in one file
+        # (e.g. version-gated redefinitions) don't collide on chunk ID.
+        chunk_id_base = f"{file.path}::{symbol}::L{start_line}"
 
         if len(snippet) <= config.CHUNK_SIZE * 1.5:
             text = f"# File: {file.path}\n# {kind}: {symbol}\n{snippet}"
             chunks.append(Chunk(
-                id=f"{file.path}::{symbol}",
+                id=chunk_id_base,
                 text=text,
                 source_path=file.path,
                 symbol=symbol,
             ))
         else:
-            # Long function/class: sub-split but keep the symbol name on every piece
-            # so retrieval and citations still point at the right place.
-            chunks.extend(_sliding_window(snippet, file.path, f"{kind}: {symbol}", f"{file.path}::{symbol}"))
+            chunks.extend(_sliding_window(snippet, file.path, f"{kind}: {symbol}", chunk_id_base))
 
-    # Anything not inside a function/class (imports, constants, top-level setup)
-    # becomes its own chunk — useful for "how is X imported/configured" questions.
     remaining_lines = [line for i, line in enumerate(lines) if i not in covered_lines]
     remaining_text = "\n".join(remaining_lines).strip()
     if remaining_text:

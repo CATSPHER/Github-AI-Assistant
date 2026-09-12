@@ -84,3 +84,48 @@ else:
                         st.session_state.messages.append({"role": "assistant", "content": data["answer"]})
                 except requests.exceptions.RequestException as e:
                     st.error(f"Could not reach the backend: {e}")
+
+
+st.divider()
+st.subheader("3. Propose & apply a fix (writes to GitHub!)")
+
+if "fix_pending" not in st.session_state:
+    st.session_state.fix_pending = None
+
+target_file = st.text_input("File to fix (exact path in repo)", placeholder="calculator.py")
+fix_request = st.text_area("Describe the fix", placeholder="handle division by zero in the divide function")
+
+if st.button("Propose fix", disabled=not (target_file and fix_request and st.session_state.indexed_repo)):
+    with st.spinner("Fetching file and generating fix..."):
+        try:
+            resp = requests.post(
+                f"{API_BASE}/fix/propose",
+                json={"repo_url": st.session_state.indexed_repo, "target_file": target_file, "fix_request": fix_request},
+                timeout=120,
+            )
+            if resp.ok:
+                st.session_state.fix_pending = resp.json()
+            else:
+                st.error(f"Failed: {resp.json().get('detail', resp.text)}")
+        except requests.exceptions.RequestException as e:
+            st.error(f"Could not reach backend: {e}")
+
+if st.session_state.fix_pending and st.session_state.fix_pending.get("status") == "awaiting_approval":
+    pending = st.session_state.fix_pending
+    if not pending.get("valid_syntax", True):
+        st.warning("⚠️ Proposed content failed Python syntax validation — review carefully.")
+    st.code(pending["diff"], language="diff")
+
+    col1, col2 = st.columns(2)
+    if col1.button("✅ Approve — create branch, push, open PR", type="primary"):
+        with st.spinner("Creating branch, pushing files, opening PR..."):
+            resp = requests.post(f"{API_BASE}/fix/approve", json={"thread_id": pending["thread_id"], "approved": True})
+            result = resp.json()
+            st.success(result.get("answer", ""))
+            if result.get("pr_url"):
+                st.markdown(f"[Open the PR]({result['pr_url']})")
+            st.session_state.fix_pending = None
+    if col2.button("❌ Reject"):
+        resp = requests.post(f"{API_BASE}/fix/approve", json={"thread_id": pending["thread_id"], "approved": False})
+        st.info(resp.json().get("answer", ""))
+        st.session_state.fix_pending = None
