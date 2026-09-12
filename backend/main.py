@@ -10,6 +10,15 @@ from .fix_graph import propose_fix, resume_fix
 
 app = FastAPI(title="AI GitHub Repository Assistant")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # fine for a portfolio demo; a real product would list specific domains
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class IngestRequest(BaseModel):
     repo_url: str
